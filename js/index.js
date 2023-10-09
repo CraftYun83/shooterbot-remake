@@ -7,7 +7,7 @@ var playeruuid = undefined;
 let controls = {};
 let sky, sun;
 let playerInfo = {
-    height: 1.5,
+    height: 3,
     turnSpeed: .1,
     speed: .1,
     jumpHeight: .2,
@@ -21,10 +21,10 @@ const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 const pointerlockcontrols = new PointerLockControls( camera, document.body );
-const gltfloader = new GLTFLoader();
+const gltfloader = new GLTFLoader()
 const light = new THREE.AmbientLight( 0xEEEEEE );
 scene.add( light );
-var bodyModel, headModel, armModel;
+var characterModel;
 
 renderer.setSize( window.innerWidth, window.innerHeight );
 document.body.appendChild( renderer.domElement );
@@ -85,80 +85,37 @@ scene.add( ground );
 
 // Loading head and body models
 
-var scale, box, size, headElevation;
+let loader = new THREE.TextureLoader();
+let texture = loader.load('../media/models/textures/skater2.png');
+let playertexture = new THREE.MeshPhongMaterial({
+     map: texture
+});
 
-gltfloader.load(
-    "../media/models/body.glb",
-    function (gltf) {
-        bodyModel = gltf.scene.clone(true);
-        box = new THREE.Box3().setFromObject( bodyModel );
-        size = new THREE.Vector3();
-        box.getSize( size );
-        scale = 2/size.y
-        bodyModel.scale.set(scale, scale, scale);
+gltfloader.load('../media/models/char.glb', function ( gltf ) {
 
-        gltfloader.load(
-            "../media/models/head.glb",
-            function (gltf) {
-                headModel = gltf.scene.clone(true);
-                headModel.scale.set(scale, scale, scale);
-                box = new THREE.Box3().setFromObject( headModel );
-                size = new THREE.Vector3();
-                box.getSize( size );
-                headElevation = size.y;
-            },
-            function ( xhr ) {
-            },
-            function ( error ) {
-                console.log( 'An error happened' );
-            }
-        )
-        
-        gltfloader.load(
-            "../media/models/arms.glb",
-            function (gltf) {
-                armModel = gltf.scene.clone(true);
-                console.log(scale)
-                armModel.scale.set(scale, scale, scale);
-                box = new THREE.Box3().setFromObject( armModel );
-                size = new THREE.Vector3();
-                box.getSize( size );
-                console.log(size)
-            },
-            function ( xhr ) {
-            },
-            function ( error ) {
-                console.log( 'An error happened' );
-            }
-        )
-    },
-    function ( xhr ) {
-	},
-	function ( error ) {
-		console.log( 'An error happened' );
-	}
-)
+    var object = gltf.scene.children[0];
+    object.getObjectByName("characterMedium").material = playertexture
+
+    var box = new THREE.Box3().setFromObject( object );
+    var size = new THREE.Vector3();
+    box.getSize( size );
+    object.scale.set(2/size.y, 2/size.y, 2/size.y)
+
+    characterModel = object.clone(true);
+    object.updateMatrix();
+    characterModel.scale.set(0.001, 0.001, 0.001)
+    object.updateMatrix();
+    scene.add(characterModel)
+
+} );
 
 // ############################
 
 function createPlayer(uuid) {
-    var p = new THREE.Object3D();
-    p.objectID = uuid;
-
-    var playerhead = headModel.clone(true)
-    var playerbody = bodyModel.clone(true)
-    var playerarms = armModel.clone(true)
-
-    playerarms.position.y = -4*scale
-    playerarms.position.z = 0.11
-
-    playerhead.position.y = 1-headElevation/2
-
-    p.add(playerhead)
-    p.add(playerbody)
-    p.add(playerarms)
+    var playerbody = characterModel.clone();
+    playerbody.objectID = uuid;
     
-    return p;
+    return playerbody;
 }
 
 function createPacket(type, data) {
@@ -171,7 +128,7 @@ function createPacket(type, data) {
 function updatePos() {
     var packet = createPacket("pos", {
         x: camera.position.x,
-        y: camera.position.y+0.5,
+        y: camera.position.y,
         z: camera.position.z
     })
     ws.send(JSON.stringify(packet))
@@ -216,13 +173,13 @@ ws.addEventListener('message', (packet) => {
             if (player.uuid !== playeruuid) {
                 if (ids.includes(player.uuid)) {
                     var targetObj = scene.children[ids.indexOf(player.uuid)];
-                    targetObj.position.set(player.position.x, player.position.y-1.25, player.position.z);
-                    targetObj.children[0].rotation.set(player.rotation.x, player.rotation.y, player.rotation.z);
+                    targetObj.position.set(player.position.x, player.position.y, player.position.z);
+                    targetObj.getObjectByName("Head").rotation.set(player.rotation.x, player.rotation.y, player.rotation.z);
                 }  else {
                     var newp = createPlayer(player.uuid);
                     scene.add(newp)
                     newp.position.set(player.position.x, player.position.y, player.position.z);
-                    newp.children[0].rotation.set(player.rotation.x, player.rotation.y, player.rotation.z);
+                    newp.getObjectByName("Head").rotation.set(player.rotation.x, player.rotation.y, player.rotation.z);
                 }
             }
         })
@@ -230,8 +187,8 @@ ws.addEventListener('message', (packet) => {
         if (packet.data.uuid != playeruuid) {
             var player = createPlayer(packet.data.uuid);
             scene.add(player)
-            player.position.set(0, 1.5, 0);
-            player.children[0].rotation.set(0, 0, 0);
+            player.position.set(0, 2, 0);
+            player.rotation.set(0, 0, 0);
         }
     } if (packet.type == "playerleave") {
         let ids = scene.children.map(a => a.objectID);
