@@ -8,7 +8,7 @@ var playeruuid = undefined;
 let controls = {};
 let sky, sun;
 let playerInfo = {
-    height: 4,
+    height: 5.5,
     turnSpeed: .1,
     speed: .1,
     jumpHeight: .2,
@@ -96,7 +96,7 @@ var box, size, scale;
 
 gltfloader.load('../media/models/character.gltf', function ( gltf ) {
 
-    var object = gltf.scene.children[0];
+    var object = gltf.scene.children[1].children[0];
 
     characterModel = clone(object);
     characterModel.getObjectByName("characterMedium").material = playertexture
@@ -126,7 +126,7 @@ function createPacket(type, data) {
 function updatePos() {
     var packet = createPacket("pos", {
         x: camera.position.x,
-        y: camera.position.y-3,
+        y: camera.position.y-6,
         z: camera.position.z
     })
     ws.send(JSON.stringify(packet))
