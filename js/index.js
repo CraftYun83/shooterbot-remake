@@ -2,12 +2,13 @@ import * as THREE from 'three';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { Sky } from 'three/addons/objects/Sky.js';
+import { clone } from 'three/addons/utils/SkeletonUtils.js';
 
 var playeruuid = undefined;
 let controls = {};
 let sky, sun;
 let playerInfo = {
-    height: 3,
+    height: 4,
     turnSpeed: .1,
     speed: .1,
     jumpHeight: .2,
@@ -91,28 +92,25 @@ let playertexture = new THREE.MeshPhongMaterial({
      map: texture
 });
 
-gltfloader.load('../media/models/char.glb', function ( gltf ) {
+var box, size, scale;
+
+gltfloader.load('../media/models/character.gltf', function ( gltf ) {
 
     var object = gltf.scene.children[0];
-    object.getObjectByName("characterMedium").material = playertexture
 
-    var box = new THREE.Box3().setFromObject( object );
-    var size = new THREE.Vector3();
+    characterModel = clone(object);
+    characterModel.getObjectByName("characterMedium").material = playertexture
+    box = new THREE.Box3().setFromObject( characterModel );
+    size = new THREE.Vector3();
     box.getSize( size );
-    object.scale.set(2/size.y, 2/size.y, 2/size.y)
-
-    characterModel = object.clone(true);
-    object.updateMatrix();
-    characterModel.scale.set(0.001, 0.001, 0.001)
-    object.updateMatrix();
-    scene.add(characterModel)
-
+    scale = 2/size.y
+    characterModel.scale.set(scale, scale, scale)
 } );
 
 // ############################
 
 function createPlayer(uuid) {
-    var playerbody = characterModel.clone();
+    var playerbody = clone(characterModel);
     playerbody.objectID = uuid;
     
     return playerbody;
@@ -128,7 +126,7 @@ function createPacket(type, data) {
 function updatePos() {
     var packet = createPacket("pos", {
         x: camera.position.x,
-        y: camera.position.y,
+        y: camera.position.y-3,
         z: camera.position.z
     })
     ws.send(JSON.stringify(packet))
