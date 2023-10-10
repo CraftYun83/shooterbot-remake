@@ -10,13 +10,15 @@ let sky, sun;
 let playerInfo = {
     height: 5.5,
     turnSpeed: .1,
-    speed: .1,
-    jumpHeight: .2,
+    speed: .2,
+    jumpHeight: .3,
     gravity: .01,
     velocity: 0,
     lerpRotation: new THREE.Vector3(),
     playerJumps: false
 };
+
+const radsToDegs = rad => rad * 180 / Math.PI;
 const ws = new WebSocket("ws://localhost:6942");
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
@@ -134,9 +136,9 @@ function updatePos() {
 
 function updateRos() {
     var packet = createPacket("rot", {
-        x: camera.rotation.x,
+        x: camera.rotation.x + Math.PI,
         y: camera.rotation.y,
-        z: camera.rotation.z
+        z: camera.rotation.z + Math.PI
     })
     ws.send(JSON.stringify(packet))
 }
@@ -172,18 +174,35 @@ ws.addEventListener('message', (packet) => {
                 if (ids.includes(player.uuid)) {
                     var targetObj = scene.children[ids.indexOf(player.uuid)];
                     targetObj.position.set(player.position.x, player.position.y, player.position.z);
-                    targetObj.getObjectByName("Head").rotation.set(player.rotation.x, player.rotation.y, player.rotation.z);
+                    targetObj.rotation.set(player.rotation.x, player.rotation.y, player.rotation.z);
+                    var diffInAngle = 180-radsToDegs(targetObj.getObjectByName("Spine").quaternion.angleTo(targetObj.getObjectByName("HipsCtrl").quaternion));
+                    if (diffInAngle > 45) {
+                        console.log("fucked")
+                    }
                 }  else {
                     var newp = createPlayer(player.uuid);
+                    window.player = newp
+                    newp.getObjectByName("RightShoulder").rotation.y = Math.PI/4
+                    newp.getObjectByName("RightArm").rotation.x = 3.5
+                    newp.getObjectByName("RightForeArm").rotation.z = -0.4
+                    newp.getObjectByName("RightHand").rotation.x = -0.1
+
+                    newp.getObjectByName("LeftShoulder").rotation.y = Math.PI/3.9
+                    newp.getObjectByName("LeftArm").rotation.x = 1.7
+                    newp.getObjectByName("LeftForeArm").rotation.z = -0.4
+                    newp.getObjectByName("LeftHand").rotation.x = -3.5
+
                     scene.add(newp)
                     newp.position.set(player.position.x, player.position.y, player.position.z);
-                    newp.getObjectByName("Head").rotation.set(player.rotation.x, player.rotation.y, player.rotation.z);
+                    newp.rotation.set(player.rotation.x, player.rotation.y, player.rotation.z);
                 }
             }
         })
     } if (packet.type == "playerjoin") {
         if (packet.data.uuid != playeruuid) {
             var player = createPlayer(packet.data.uuid);
+            window.player = player
+            player.getObjectByName("RightShoulder").rotation.z = Math.PI/2
             scene.add(player)
             player.position.set(0, 2, 0);
             player.rotation.set(0, 0, 0);
